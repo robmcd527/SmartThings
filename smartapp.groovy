@@ -65,28 +65,32 @@ def listSwitches() {
 void updateSwitches() {
     // use the built-in request object to get the command parameter
     def command = params.command
-    def deviceId = params.id
+    def devices = params.id.tokenize(',')
+    def success = false
     
-    log.debug "command: $command and deviceId: $deviceId"
+    if (! command) {
+    	httpError(501, "Unable to find command!");
+    }
+    
+    if (! devices || devices.size == 0) {
+    	httpError(501, "Unable to find any devices!");
+    }
+    
+    log.debug "command: $command and deviceIds: " + devices.toListString()
 
-    if (command) {
-
-        // check that the switch supports the specified command
-        // If not, return an error using httpError, providing a HTTP status code.
-        switches.each {
-        
-        	if (it.id == deviceId && it.hasCommand(command)) {
-            	it."$command"();
-            }
-            //if (!it.hasCommand(command)) {
-            //    httpError(501, "$command is not a valid command for all switches specified")
-            //} 
-        }
-        
-        // all switches have the comand
-        // execute the command on all switches
-        // (note we can do this on the array - the command will be invoked on every element
-        //switches."$command"()
+    // For each switch, check to see if its one we want to toggle
+    // if so, do it!
+    switches.each {
+        def did = it.id
+        if (devices.find({it == did}) != null && it.hasCommand(command)) {
+        	log.debug "Turning $did $command"
+            it."$command"()
+            success = true
+        } 
+    }
+    
+    if (! success) {
+    	httpError(404, "Unable to find any devices with requested Ids!")
     }
 }
 
